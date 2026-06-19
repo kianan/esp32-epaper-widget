@@ -64,7 +64,33 @@ void loop() {
         }
     }
 
-    TouchResult tr = readTouch();
+    TouchResult tr = {TOUCH_NONE, 0, 0};
+    bool wasActive = touchActive();
+    if (_touchIntFired || wasActive) {
+        if (_touchIntFired && !wasActive) {
+#ifdef DEBUG_GESTURES
+            Serial.println("[touch] polling started");
+#endif
+        }
+        _touchIntFired = false;
+        tr = readTouch();
+        if (wasActive && !touchActive()) {
+#ifdef DEBUG_GESTURES
+            Serial.println("[touch] polling stopped — battery saving");
+#endif
+        }
+    }
+
+#ifdef DEBUG_GESTURES
+    switch (tr.event) {
+        case TOUCH_TAP:    Serial.printf("TAP (%d,%d)\n", tr.x, tr.y); break;
+        case SWIPE_LEFT:   Serial.println("SWIPE_LEFT");  break;
+        case SWIPE_RIGHT:  Serial.println("SWIPE_RIGHT"); break;
+        case SWIPE_UP:     Serial.println("SWIPE_UP");    break;
+        case SWIPE_DOWN:   Serial.println("SWIPE_DOWN");  break;
+        default: break;
+    }
+#endif
 
     switch (currentScreen) {
         case SCREEN_MENU: {
@@ -108,5 +134,5 @@ void loop() {
             break;
     }
 
-    delay(50);
+    delay(10);
 }
