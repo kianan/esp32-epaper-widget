@@ -9,7 +9,8 @@
 #include "screen_pomodoro.h"
 #include "screen_photos.h"
 #include "screen_jessie.h"
-#include "pcf85063.h"
+#include "rtc.h"
+#include "sleep.h"
 
 WaveshareEPD epd(EPD_CS, EPD_DC, EPD_RST, EPD_BUSY, EPD_SCLK, EPD_SDI);
 
@@ -35,13 +36,34 @@ void setup() {
 
     epd.init();
 
-    LittleFS.begin(true); // true = format on fail
+    LittleFS.begin(true);
 
     Wire.begin(TOUCH_SDA, TOUCH_SCL);
     delay(200);
     touchInit();
 
-    drawMenu(epd);
+    // Handle deep sleep wakeup
+    esp_sleep_wakeup_cause_t wakeup = esp_sleep_get_wakeup_cause();
+    if (wakeup == ESP_SLEEP_WAKEUP_TIMER) {
+        // Pomodoro timer expired during sleep — advance state and show screen
+        pomoOnTimerWake();
+        currentScreen = SCREEN_POMODORO;
+        _drawPomoFull(epd);
+    } else if (wakeup != ESP_SLEEP_WAKEUP_UNDEFINED) {
+        // Touch or button woke device
+        if (pomoIsRunning()) {
+            int elapsed = sleepElapsedSecs(rtcSecsSinceMidnight());
+            pomoResumeAfterSleep(elapsed);
+            currentScreen = SCREEN_POMODORO;
+            _drawPomoFull(epd);
+        } else {
+            drawMenu(epd);
+        }
+    } else {
+        drawMenu(epd);
+    }
+
+    activityPing();
 }
 
 void loop() {
@@ -56,12 +78,17 @@ void loop() {
             int h = t.substring(0, 2).toInt();
             int m = t.substring(3, 5).toInt();
             if (h >= 0 && h < 24 && m >= 0 && m < 60) {
-                pcf85063Write(h, m);
+                rtcWrite(h, m);
                 Serial.println("OK");
             } else {
                 Serial.println("ERR: use SET_TIME HH:MM");
             }
         }
+    }
+
+    // Sleep on inactivity
+    if (sleepTimeoutReached()) {
+        enterDeepSleep(rtcSecsSinceMidnight(), pomoSleepTimerUs());
     }
 
     TouchResult tr = {TOUCH_NONE, 0, 0};
@@ -74,6 +101,7 @@ void loop() {
         }
         _touchIntFired = false;
         tr = readTouch();
+        if (tr.event != TOUCH_NONE) activityPing();
         if (wasActive && !touchActive()) {
 #ifdef DEBUG_GESTURES
             Serial.println("[touch] polling stopped — battery saving");

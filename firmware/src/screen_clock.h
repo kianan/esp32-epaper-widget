@@ -1,7 +1,7 @@
 #pragma once
 #include "screen_menu.h"
 #include "shtc3.h"
-#include "pcf85063.h"
+#include "rtc.h"
 #include "battery.h"
 #include <Fonts/FreeMonoBold18pt7b.h>
 #include <Fonts/FreeSans9pt7b.h>
@@ -24,7 +24,7 @@ bool updateClock(WaveshareEPD& epd, TouchResult tr) {
     epd.setFont(&FreeMonoBold18pt7b);
     int h = 0, m = 0;
     char timeBuf[6];
-    if (pcf85063Read(h, m)) {
+    if (rtcRead(h, m)) {
         snprintf(timeBuf, sizeof(timeBuf), "%02d:%02d", h, m);
     } else {
         snprintf(timeBuf, sizeof(timeBuf), "--:--");
