@@ -3,7 +3,17 @@
 #include "touch.h"
 #include <Fonts/FreeSansBold9pt7b.h>
 
-enum Screen { SCREEN_MENU, SCREEN_CLOCK, SCREEN_POMODORO, SCREEN_PHOTOS, SCREEN_JESSIE };
+enum Screen {
+    SCREEN_MENU,
+    SCREEN_CLOCK, SCREEN_POMODORO, SCREEN_PHOTOS, SCREEN_JESSIE,  // page 0
+    SCREEN_5, SCREEN_6, SCREEN_7, SCREEN_8                        // page 1
+};
+
+#define MENU_PAGES  2
+#define GRID_MID_Y  95   // horizontal divider — leaves 10px for dots
+#define GRID_MID_X  100
+
+static int _menuPage = 0;
 
 static void drawBlock(WaveshareEPD& epd, const char** lines, int count,
                       int qx, int qy, int qw, int qh) {
@@ -29,34 +39,70 @@ static void drawBlock(WaveshareEPD& epd, const char** lines, int count,
     }
 }
 
+static void _drawMenuPage(WaveshareEPD& epd) {
+    epd.drawLine(GRID_MID_X, 0, GRID_MID_X, 190, 0);
+    epd.drawLine(0, GRID_MID_Y, 200, GRID_MID_Y, 0);
+
+    if (_menuPage == 0) {
+        const char* tl[] = { "Clock", "+ Temp", "+ Batt" };
+        drawBlock(epd, tl, 3, 0, 0, GRID_MID_X, GRID_MID_Y);
+        const char* tr[] = { "Focus", "Timer" };
+        drawBlock(epd, tr, 2, GRID_MID_X, 0, GRID_MID_X, GRID_MID_Y);
+        const char* bl[] = { "Photos" };
+        drawBlock(epd, bl, 1, 0, GRID_MID_Y, GRID_MID_X, 190 - GRID_MID_Y);
+        const char* br[] = { "Jessie" };
+        drawBlock(epd, br, 1, GRID_MID_X, GRID_MID_Y, GRID_MID_X, 190 - GRID_MID_Y);
+    } else {
+        const char* tl[] = { "---" }; drawBlock(epd, tl, 1, 0,           0,          GRID_MID_X, GRID_MID_Y);
+        const char* tr[] = { "---" }; drawBlock(epd, tr, 1, GRID_MID_X,  0,          GRID_MID_X, GRID_MID_Y);
+        const char* bl[] = { "---" }; drawBlock(epd, bl, 1, 0,           GRID_MID_Y, GRID_MID_X, 190 - GRID_MID_Y);
+        const char* br[] = { "---" }; drawBlock(epd, br, 1, GRID_MID_X,  GRID_MID_Y, GRID_MID_X, 190 - GRID_MID_Y);
+    }
+
+    // Page indicator dots
+    const int dotR = 3, dotSpacing = 12, dotY = 196;
+    int startX = 100 - ((MENU_PAGES - 1) * dotSpacing) / 2;
+    for (int i = 0; i < MENU_PAGES; i++) {
+        int cx = startX + i * dotSpacing;
+        if (i == _menuPage) epd.fillCircle(cx, dotY, dotR, 0);
+        else                epd.drawCircle(cx, dotY, dotR, 0);
+    }
+}
+
 void drawMenu(WaveshareEPD& epd) {
     epd.clearBuffer();
     epd.setFont(&FreeSansBold9pt7b);
     epd.setTextColor(0);
-
-    epd.drawLine(100, 0, 100, 200, 0);
-    epd.drawLine(0, 100, 200, 100, 0);
-
-    const char* tlLines[] = { "Clock", "+ Temp", "+ Batt" };
-    drawBlock(epd, tlLines, 3, 0, 0, 100, 100);
-
-    const char* trLines[] = { "Focus", "Timer" };
-    drawBlock(epd, trLines, 2, 100, 0, 100, 100);
-
-    const char* blLines[] = { "Photos" };
-    drawBlock(epd, blLines, 1, 0, 100, 100, 100);
-
-    const char* brLines[] = { "Jessie" };
-    drawBlock(epd, brLines, 1, 100, 100, 100, 100);
-
+    _drawMenuPage(epd);
     epd.displayBase();
 }
 
-Screen menuHandleTouch(TouchResult tr) {
+Screen menuHandleTouch(TouchResult tr, WaveshareEPD& epd) {
+    if (tr.event == SWIPE_LEFT) {
+        _menuPage = (_menuPage + 1) % MENU_PAGES;
+        drawMenu(epd);
+        return SCREEN_MENU;
+    }
+    if (tr.event == SWIPE_RIGHT) {
+        _menuPage = (_menuPage - 1 + MENU_PAGES) % MENU_PAGES;
+        drawMenu(epd);
+        return SCREEN_MENU;
+    }
     if (tr.event != TOUCH_TAP) return SCREEN_MENU;
-    if (tr.x < 100 && tr.y < 100)   return SCREEN_CLOCK;
-    if (tr.x >= 100 && tr.y < 100)  return SCREEN_POMODORO;
-    if (tr.x < 100  && tr.y >= 100) return SCREEN_PHOTOS;
-    if (tr.x >= 100 && tr.y >= 100) return SCREEN_JESSIE;
+
+    bool top  = tr.y < GRID_MID_Y;
+    bool left = tr.x < GRID_MID_X;
+
+    if (_menuPage == 0) {
+        if (left  && top)  return SCREEN_CLOCK;
+        if (!left && top)  return SCREEN_POMODORO;
+        if (left  && !top) return SCREEN_PHOTOS;
+        if (!left && !top) return SCREEN_JESSIE;
+    } else {
+        if (left  && top)  return SCREEN_5;
+        if (!left && top)  return SCREEN_6;
+        if (left  && !top) return SCREEN_7;
+        if (!left && !top) return SCREEN_8;
+    }
     return SCREEN_MENU;
 }

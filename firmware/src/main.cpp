@@ -9,6 +9,10 @@
 #include "screen_pomodoro.h"
 #include "screen_photos.h"
 #include "screen_jessie.h"
+#include "screen_5.h"
+#include "screen_6.h"
+#include "screen_7.h"
+#include "screen_8.h"
 #include "rtc.h"
 #include "sleep.h"
 
@@ -122,13 +126,17 @@ void loop() {
 
     switch (currentScreen) {
         case SCREEN_MENU: {
-            Screen next = menuHandleTouch(tr);
+            Screen next = menuHandleTouch(tr, epd);
             if (next != SCREEN_MENU) {
                 currentScreen = next;
                 if (currentScreen == SCREEN_CLOCK)    updateClock(epd, {TOUCH_NONE});
                 if (currentScreen == SCREEN_POMODORO) pomoInit(epd);
                 if (currentScreen == SCREEN_PHOTOS)   photosInit(epd);
                 if (currentScreen == SCREEN_JESSIE)   drawJessie(epd);
+                if (currentScreen == SCREEN_5)        screen5Init(epd);
+                if (currentScreen == SCREEN_6)        screen6Init(epd);
+                if (currentScreen == SCREEN_7)        screen7Init(epd);
+                if (currentScreen == SCREEN_8)        screen8Init(epd);
             }
             break;
         }
@@ -159,6 +167,19 @@ void loop() {
                 currentScreen = SCREEN_MENU;
                 drawMenu(epd);
             }
+            break;
+
+        case SCREEN_5:
+            if (updateScreen5(epd, tr)) { currentScreen = SCREEN_MENU; drawMenu(epd); }
+            break;
+        case SCREEN_6:
+            if (updateScreen6(epd, tr)) { currentScreen = SCREEN_MENU; drawMenu(epd); }
+            break;
+        case SCREEN_7:
+            if (updateScreen7(epd, tr)) { currentScreen = SCREEN_MENU; drawMenu(epd); }
+            break;
+        case SCREEN_8:
+            if (updateScreen8(epd, tr)) { currentScreen = SCREEN_MENU; drawMenu(epd); }
             break;
     }
 
