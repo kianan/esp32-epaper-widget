@@ -1,5 +1,6 @@
 #pragma once
 #include "screen_menu.h"
+#include "sleep.h"
 #include <Fonts/FreeMonoBold24pt7b.h>
 #include <Fonts/FreeSansBold9pt7b.h>
 #include <Fonts/FreeSans9pt7b.h>
@@ -17,12 +18,11 @@
 
 enum PomoState { POMO_IDLE, POMO_WORK, POMO_PAUSED, POMO_BREAK, POMO_DONE };
 
-// RTC_DATA_ATTR survives deep sleep; others reset on wake (correct behaviour)
-RTC_DATA_ATTR PomoState _pomoState    = POMO_IDLE;
-RTC_DATA_ATTR int       _pomoSecsLeft = POMO_WORK_SECS;
-RTC_DATA_ATTR int       _pomoSession  = 0;
-static unsigned long    _pomoLastTick = 0;       // millis() resets on wake, so not RTC
-static bool             _pomoPartialReady = false; // always needs full redraw after wake
+static PomoState     _pomoState        = POMO_IDLE;
+static int           _pomoSecsLeft     = POMO_WORK_SECS;
+static int           _pomoSession      = 0;
+static unsigned long _pomoLastTick     = 0;
+static bool          _pomoPartialReady = false;
 
 void _drawTimerDigits(WaveshareEPD& epd) {
     char buf[6];
@@ -82,37 +82,6 @@ void _drawPomoFull(WaveshareEPD& epd) {
     }
 }
 
-bool pomoIsRunning() {
-    return _pomoState == POMO_WORK || _pomoState == POMO_BREAK;
-}
-
-uint64_t pomoSleepTimerUs() {
-    return pomoIsRunning() ? (uint64_t)_pomoSecsLeft * 1000000ULL : 0;
-}
-
-// Called on deep sleep timer wake — advance state as if timer expired
-void pomoOnTimerWake() {
-    _pomoLastTick     = 0;
-    _pomoPartialReady = false;
-    if (_pomoState == POMO_WORK) {
-        _pomoSession++;
-        _pomoState    = POMO_BREAK;
-        _pomoSecsLeft = POMO_BREAK_SECS;
-    } else if (_pomoState == POMO_BREAK) {
-        _pomoState    = POMO_DONE;
-        _pomoSecsLeft = 0;
-    }
-}
-
-// Called on touch/button wake — subtract elapsed RTC seconds
-void pomoResumeAfterSleep(int elapsedSecs) {
-    _pomoLastTick     = 0;
-    _pomoPartialReady = false;
-    if (!pomoIsRunning()) return;
-    _pomoSecsLeft -= elapsedSecs;
-    if (_pomoSecsLeft <= 0) pomoOnTimerWake();
-}
-
 void pomoInit(WaveshareEPD& epd) {
     _pomoState         = POMO_IDLE;
     _pomoSecsLeft      = POMO_WORK_SECS;
@@ -166,6 +135,7 @@ bool updatePomodoro(WaveshareEPD& epd, TouchResult tr) {
         if (now - _pomoLastTick >= 1000) {
             _pomoLastTick = now;
             _pomoSecsLeft--;
+            activityPing();
 
             if (_pomoSecsLeft <= 0) {
                 if (_pomoState == POMO_WORK) {

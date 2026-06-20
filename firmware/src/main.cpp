@@ -46,26 +46,7 @@ void setup() {
     delay(200);
     touchInit();
 
-    // Handle deep sleep wakeup
-    esp_sleep_wakeup_cause_t wakeup = esp_sleep_get_wakeup_cause();
-    if (wakeup == ESP_SLEEP_WAKEUP_TIMER) {
-        // Pomodoro timer expired during sleep — advance state and show screen
-        pomoOnTimerWake();
-        currentScreen = SCREEN_POMODORO;
-        _drawPomoFull(epd);
-    } else if (wakeup != ESP_SLEEP_WAKEUP_UNDEFINED) {
-        // Touch or button woke device
-        if (pomoIsRunning()) {
-            int elapsed = sleepElapsedSecs(rtcSecsSinceMidnight());
-            pomoResumeAfterSleep(elapsed);
-            currentScreen = SCREEN_POMODORO;
-            _drawPomoFull(epd);
-        } else {
-            drawMenu(epd);
-        }
-    } else {
-        drawMenu(epd);
-    }
+    drawMenu(epd);
 
     activityPing();
 }
@@ -92,7 +73,7 @@ void loop() {
 
     // Sleep on inactivity
     if (sleepTimeoutReached()) {
-        enterDeepSleep(rtcSecsSinceMidnight(), pomoSleepTimerUs());
+        enterDeepSleep();
     }
 
     TouchResult tr = {TOUCH_NONE, 0, 0};
