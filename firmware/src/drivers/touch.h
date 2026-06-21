@@ -56,7 +56,7 @@ TouchResult readTouch() {
         }
     } else if (_tsState == TS_PRESSING) {
         _tsState    = TS_IDLE;
-        _tsCooldown = millis() + 80;
+        _tsCooldown = millis() + 200;
 
         TouchEvent evt = classifyGesture(_tsPeakDx, _tsPeakDy);
         if (evt == TOUCH_TAP) tr = {TOUCH_TAP, _tsStartX, _tsStartY};
