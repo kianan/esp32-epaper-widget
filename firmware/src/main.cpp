@@ -1,6 +1,7 @@
 #include <Arduino.h>
 #include <Wire.h>
 #include <LittleFS.h>
+#include "driver/gpio.h"
 
 #include "pins.h"
 #include "touch.h"
@@ -25,7 +26,8 @@ void setup() {
 
     pinMode(BOOT_BTN, INPUT_PULLUP);
 
-    // Enable battery power rail so board runs without USB
+    // Release any hold from deep sleep, then enable battery power rail
+    gpio_hold_dis((gpio_num_t)VBAT_PWR_EN);
     pinMode(VBAT_PWR_EN, OUTPUT);
     digitalWrite(VBAT_PWR_EN, HIGH);
 
