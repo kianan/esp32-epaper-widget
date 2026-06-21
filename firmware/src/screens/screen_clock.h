@@ -29,15 +29,13 @@ bool updateClock(WaveshareEPD& epd, TouchResult tr) {
     } else {
         snprintf(timeBuf, sizeof(timeBuf), "--:--");
     }
-    // Center time horizontally
     {
         int16_t x1, y1; uint16_t tw, th;
         epd.getTextBounds(timeBuf, 0, 0, &x1, &y1, &tw, &th);
-        epd.setCursor((200 - tw) / 2 - x1, 85);
+        epd.setCursor((200 - tw) / 2 - x1, 82);
     }
     epd.print(timeBuf);
 
-    // Temp + Batt
     epd.setFont(&FreeSans9pt7b);
 
     auto printCentered = [&](const char* s, int y) {
@@ -47,18 +45,26 @@ bool updateClock(WaveshareEPD& epd, TouchResult tr) {
         epd.print(s);
     };
 
-    float tempC = shtc3ReadTemp();
-    char tempBuf[20];
-    if (tempC > -900) {
-        snprintf(tempBuf, sizeof(tempBuf), "Temp: %.1f C", tempC);
-    } else {
+    float tempC = -999, humidity = -999;
+    shtc3Read(tempC, humidity);
+
+    char tempBuf[24];
+    if (tempC > -900)
+        snprintf(tempBuf, sizeof(tempBuf), "%.1f C", tempC);
+    else
         snprintf(tempBuf, sizeof(tempBuf), "Temp: err");
-    }
-    printCentered(tempBuf, 120);
+    printCentered(tempBuf, 112);
+
+    char humBuf[24];
+    if (humidity > -900)
+        snprintf(humBuf, sizeof(humBuf), "%.0f%% RH", humidity);
+    else
+        snprintf(humBuf, sizeof(humBuf), "Hum: err");
+    printCentered(humBuf, 133);
 
     char battBuf[16];
     snprintf(battBuf, sizeof(battBuf), "Batt: %d%%", batteryPercent());
-    printCentered(battBuf, 145);
+    printCentered(battBuf, 154);
 
     epd.drawLine(0, CLOCK_MENU_STRIP_Y, 200, CLOCK_MENU_STRIP_Y, 0);
     epd.setCursor(55, 190); epd.print("< MENU");

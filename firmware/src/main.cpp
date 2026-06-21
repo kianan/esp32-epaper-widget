@@ -23,8 +23,10 @@ Screen currentScreen = SCREEN_MENU;
 
 void setup() {
     Serial.begin(115200);
+    Serial.setTxTimeoutMs(0);
 
     pinMode(BOOT_BTN, INPUT_PULLUP);
+    pinMode(PWR_BTN, INPUT_PULLUP);
 
     // Release any hold from deep sleep, then enable battery power rail
     gpio_hold_dis((gpio_num_t)VBAT_PWR_EN);
@@ -45,6 +47,7 @@ void setup() {
     LittleFS.begin(true);
 
     Wire.begin(TOUCH_SDA, TOUCH_SCL);
+    Wire.setClock(400000);
     delay(200);
     touchInit();
 
@@ -54,13 +57,13 @@ void setup() {
 }
 
 void loop() {
+#ifdef DEBUG
     if (Serial.available()) {
         String cmd = Serial.readStringUntil('\n');
         cmd.trim();
         if (cmd == "SCREENSHOT") {
             epd.dumpBuffer();
         } else if (cmd.startsWith("SET_TIME ")) {
-            // SET_TIME HH:MM
             String t = cmd.substring(9);
             int h = t.substring(0, 2).toInt();
             int m = t.substring(3, 5).toInt();
@@ -72,6 +75,13 @@ void loop() {
             }
         }
     }
+#endif
+
+    // PWR_BTN press → immediate deep sleep
+    if (digitalRead(PWR_BTN) == LOW) {
+        delay(50);  // debounce
+        if (digitalRead(PWR_BTN) == LOW) enterDeepSleep();
+    }
 
     // Sleep on inactivity
     if (sleepTimeoutReached()) {
@@ -82,7 +92,7 @@ void loop() {
     bool wasActive = touchActive();
     if (_touchIntFired || wasActive) {
         if (_touchIntFired && !wasActive) {
-#ifdef DEBUG_GESTURES
+#ifdef DEBUG
             Serial.println("[touch] polling started");
 #endif
         }
@@ -90,13 +100,13 @@ void loop() {
         tr = readTouch();
         if (tr.event != TOUCH_NONE) activityPing();
         if (wasActive && !touchActive()) {
-#ifdef DEBUG_GESTURES
+#ifdef DEBUG
             Serial.println("[touch] polling stopped — battery saving");
 #endif
         }
     }
 
-#ifdef DEBUG_GESTURES
+#ifdef DEBUG
     switch (tr.event) {
         case TOUCH_TAP:    Serial.printf("TAP (%d,%d)\n", tr.x, tr.y); break;
         case SWIPE_LEFT:   Serial.println("SWIPE_LEFT");  break;
@@ -165,6 +175,4 @@ void loop() {
             if (updateScreen8(epd, tr)) { currentScreen = SCREEN_MENU; drawMenu(epd); }
             break;
     }
-
-    delay(10);
 }

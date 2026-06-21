@@ -2,6 +2,7 @@
 #include "WaveshareEPD.h"
 #include "touch.h"
 #include "menu_logic.h"
+#include "rtc.h"
 #include <Fonts/FreeSansBold9pt7b.h>
 
 static int _menuPage = 0;
@@ -35,7 +36,10 @@ static void _drawMenuPage(WaveshareEPD& epd) {
     epd.drawLine(0, GRID_MID_Y, 200, GRID_MID_Y, 0);
 
     if (_menuPage == 0) {
-        const char* tl[] = { "Clock", "+ Temp", "+ Batt" };
+        char _menuTimeBuf[6] = "--:--";
+        int _mh, _mm;
+        if (rtcRead(_mh, _mm)) snprintf(_menuTimeBuf, sizeof(_menuTimeBuf), "%02d:%02d", _mh, _mm);
+        const char* tl[] = { "Display", _menuTimeBuf, "Sensors" };
         drawBlock(epd, tl, 3, 0, 0, GRID_MID_X, GRID_MID_Y);
         const char* tr[] = { "Focus", "Timer" };
         drawBlock(epd, tr, 2, GRID_MID_X, 0, GRID_MID_X, GRID_MID_Y);
@@ -44,8 +48,8 @@ static void _drawMenuPage(WaveshareEPD& epd) {
         const char* br[] = { "Jessie" };
         drawBlock(epd, br, 1, GRID_MID_X, GRID_MID_Y, GRID_MID_X, 190 - GRID_MID_Y);
     } else {
-        const char* tl[] = { "---" }; drawBlock(epd, tl, 1, 0,           0,          GRID_MID_X, GRID_MID_Y);
-        const char* tr[] = { "---" }; drawBlock(epd, tr, 1, GRID_MID_X,  0,          GRID_MID_X, GRID_MID_Y);
+        const char* tl[] = { "WiFi" }; drawBlock(epd, tl, 1, 0,           0,          GRID_MID_X, GRID_MID_Y);
+        const char* tr[] = { "API" }; drawBlock(epd, tr, 1, GRID_MID_X,  0,          GRID_MID_X, GRID_MID_Y);
         const char* bl[] = { "---" }; drawBlock(epd, bl, 1, 0,           GRID_MID_Y, GRID_MID_X, 190 - GRID_MID_Y);
         const char* br[] = { "---" }; drawBlock(epd, br, 1, GRID_MID_X,  GRID_MID_Y, GRID_MID_X, 190 - GRID_MID_Y);
     }
