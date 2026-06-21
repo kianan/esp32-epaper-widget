@@ -1,17 +1,8 @@
 #pragma once
 #include "WaveshareEPD.h"
 #include "touch.h"
+#include "menu_logic.h"
 #include <Fonts/FreeSansBold9pt7b.h>
-
-enum Screen {
-    SCREEN_MENU,
-    SCREEN_CLOCK, SCREEN_POMODORO, SCREEN_PHOTOS, SCREEN_JESSIE,  // page 0
-    SCREEN_5, SCREEN_6, SCREEN_7, SCREEN_8                        // page 1
-};
-
-#define MENU_PAGES  2
-#define GRID_MID_Y  95   // horizontal divider — leaves 10px for dots
-#define GRID_MID_X  100
 
 static int _menuPage = 0;
 
@@ -89,20 +80,5 @@ Screen menuHandleTouch(TouchResult tr, WaveshareEPD& epd) {
         return SCREEN_MENU;
     }
     if (tr.event != TOUCH_TAP) return SCREEN_MENU;
-
-    bool top  = tr.y < GRID_MID_Y;
-    bool left = tr.x < GRID_MID_X;
-
-    if (_menuPage == 0) {
-        if (left  && top)  return SCREEN_CLOCK;
-        if (!left && top)  return SCREEN_POMODORO;
-        if (left  && !top) return SCREEN_PHOTOS;
-        if (!left && !top) return SCREEN_JESSIE;
-    } else {
-        if (left  && top)  return SCREEN_5;
-        if (!left && top)  return SCREEN_6;
-        if (left  && !top) return SCREEN_7;
-        if (!left && !top) return SCREEN_8;
-    }
-    return SCREEN_MENU;
+    return menuScreenForTap(tr.x, tr.y, _menuPage);
 }
