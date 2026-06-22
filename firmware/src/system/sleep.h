@@ -4,7 +4,7 @@
 #include "driver/gpio.h"
 #include "pins.h"
 
-#define SLEEP_TIMEOUT_MS  (60UL * 1000)
+#define SLEEP_TIMEOUT_MS  (5UL * 60 * 1000)
 
 static unsigned long _lastActivityMs = 0;
 
