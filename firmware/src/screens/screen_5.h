@@ -52,7 +52,7 @@ static void _drawWifiStatus(WaveshareEPD& epd) {
         epd.setCursor(10, 180); epd.print("Swipe up: share WiFi");
     }
 
-    epd.setCursor(10, 193); epd.print("Swipe down: back");
+    epd.setCursor(10, 193); epd.print("Swipe right: back");
     epd.displayBase();
 }
 
@@ -291,8 +291,11 @@ static void _startPortal(WaveshareEPD& epd) {
 // ── Public interface ──────────────────────────────────────────────────────
 
 void screen5Init(WaveshareEPD& epd) {
-    if (!wifiConnected()) wifiBegin();
-    _drawWifiStatus(epd);
+    _drawWifiStatus(epd);                   // show immediately (not connected yet)
+    if (!wifiConnected()) {
+        wifiBegin();
+        if (wifiConnected()) _drawWifiStatus(epd);  // redraw with IP once connected
+    }
 }
 
 bool updateScreen5(WaveshareEPD& epd, TouchResult tr) {
@@ -306,7 +309,7 @@ bool updateScreen5(WaveshareEPD& epd, TouchResult tr) {
         return false;
     }
 
-    if (tr.event == SWIPE_DOWN) return true;
+    if (tr.event == SWIPE_RIGHT) return true;
     if (tr.event == SWIPE_UP && wifiConnected()) {
         _showingShareQR = true;
         _drawShareWifiQR(epd);

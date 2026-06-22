@@ -33,7 +33,7 @@ static void _drawScreen6Content(WaveshareEPD& epd, const String& status, const S
 
     epd.setTextWrap(false);
     epd.setFont(&FreeSansBold9pt7b);
-    epd.setCursor(0, 197); epd.print("Swipe down: back  Tap: refresh");
+    epd.setCursor(0, 197); epd.print("Swipe right: back  Tap: refresh");
 }
 
 static void _screen6Fetch(WaveshareEPD& epd, bool firstLoad) {
@@ -84,14 +84,29 @@ static void _screen6Fetch(WaveshareEPD& epd, bool firstLoad) {
 }
 
 void screen6Init(WaveshareEPD& epd) {
-    if (!wifiConnected()) wifiBegin();
+    bool needsConnect = !wifiConnected();
+    if (needsConnect) {
+        // Show "Connecting..." immediately before blocking WiFi connect
+        epd.clearBuffer();
+        epd.setFont(&FreeSansBold9pt7b);
+        epd.setTextColor(0);
+        epd.setCursor(10, 18); epd.print("API");
+        epd.drawLine(0, 25, 200, 25, 0);
+        epd.setFont(NULL); epd.setTextSize(1);
+        epd.setCursor(0, 40); epd.print("Connecting...");
+        epd.displayBase();
+        epd.initPartial();
+        wifiBegin();
+    }
     // temp measure to sync clock in screen 6. migrate if there's better generic place
     if (wifiConnected()) ntpSync();
-    _screen6Fetch(epd, true);
+    // firstLoad=true triggers displayBase+initPartial; if we already showed
+    // "Connecting...", use partial from here on
+    _screen6Fetch(epd, !needsConnect);
 }
 
 bool updateScreen6(WaveshareEPD& epd, TouchResult tr) {
-    if (tr.event == SWIPE_DOWN) return true;
+    if (tr.event == SWIPE_RIGHT) return true;
     if (tr.event == TOUCH_TAP)  _screen6Fetch(epd, false);
     return false;
 }

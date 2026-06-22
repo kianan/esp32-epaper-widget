@@ -68,10 +68,8 @@ void _drawPomoFull(WaveshareEPD& epd) {
     else if (_pomoState == POMO_WORK) epd.print("Tap to pause");
     else if (_pomoState == POMO_DONE) epd.print("Tap to reset");
 
-    // Menu strip separator + label
-    epd.drawLine(0, MENU_STRIP_Y, 200, MENU_STRIP_Y, 0);
-    epd.setCursor(55, 190);
-    epd.print("< MENU");
+    epd.setFont(NULL); epd.setTextSize(1);
+    epd.setCursor(5, 194); epd.print("Swipe right: back");
 
     if (_pomoPartialReady) {
         epd.displayPartial();
@@ -93,16 +91,14 @@ void pomoInit(WaveshareEPD& epd) {
 // Returns true if should go back to menu
 bool updatePomodoro(WaveshareEPD& epd, TouchResult tr) {
     bool touched = (tr.event == TOUCH_TAP);
-    bool backGesture = (tr.event == SWIPE_DOWN) ||
-                       (touched && tr.y >= MENU_STRIP_Y);
 
-    if (backGesture) {
+    if (tr.event == SWIPE_RIGHT) {
         if (_pomoState == POMO_WORK) _pomoState = POMO_PAUSED;
         _pomoPartialReady = false;
         return true;
     }
 
-    if (touched && tr.y < MENU_STRIP_Y) {
+    if (touched) {
         // Tap on main area = start/pause/reset
         bool changed = true;
         switch (_pomoState) {

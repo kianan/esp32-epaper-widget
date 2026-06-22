@@ -12,7 +12,7 @@ bool updateClock(WaveshareEPD& epd, TouchResult tr) {
     static unsigned long lastDraw = 0;
     unsigned long now = millis();
 
-    if (tr.event != TOUCH_NONE) return true; // any gesture = back to menu
+    if (tr.event == SWIPE_RIGHT) return true;
 
     if (now - lastDraw < 10000 && lastDraw != 0) return false;
     lastDraw = now;
@@ -67,7 +67,8 @@ bool updateClock(WaveshareEPD& epd, TouchResult tr) {
     printCentered(battBuf, 154);
 
     epd.drawLine(0, CLOCK_MENU_STRIP_Y, 200, CLOCK_MENU_STRIP_Y, 0);
-    epd.setCursor(55, 190); epd.print("< MENU");
+    epd.setFont(NULL); epd.setTextSize(1);
+    epd.setCursor(5, 194); epd.print("Swipe right: back");
 
     epd.display();
     return false;
