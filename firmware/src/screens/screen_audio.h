@@ -20,8 +20,8 @@ static void _drawAudioScreen(WaveshareEPD& epd)
     epd.drawLine(0,        S7_MID_Y, 200, S7_MID_Y, 0);
     epd.drawLine(S7_MID_X, 0,        S7_MID_X, 200, 0);
 
-    // Top-left: "Ding" — ~37px wide, centred in [0,100]
-    epd.setCursor(31, 57); epd.print("Ding");
+    // Top-left: "1-Up" — ~36px wide, centred in [0,100]
+    epd.setCursor(32, 57); epd.print("1-Up");
 
     // Top-right: "Eh Eh" — ~46px wide, centred in [100,200]
     epd.setCursor(127, 57); epd.print("Eh Eh");

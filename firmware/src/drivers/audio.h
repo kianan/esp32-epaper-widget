@@ -7,8 +7,8 @@
 #include "codec_init.h"
 #include "esp_codec_dev.h"
 
-// The Ding: 900ms — layered C5+E5 sines, 2ms attack, slow exponential ring-out
-static const int DING_SAMPLES = 14400;  // 900ms at 16kHz
+// 1-Up: 6 ascending NES-style square-wave notes, 100ms each
+static const int DING_SAMPLES = 9600;   // 6 × 1600 samples at 16kHz
 // The Eh-Eh: two 150ms square-wave bursts at 150Hz with 80ms gap, hard cutoff
 static const int EHEH_SAMPLES = 6080;   // 2×2400 + 1280 gap
 // Record: 5s stereo 16kHz 16-bit = 320KB, allocated from PSRAM
@@ -25,21 +25,29 @@ static bool                   _hasRec      = false;
 
 static void _generateDing(int16_t* buf, int samples)
 {
-    const float sr     = 16000.0f;
-    const float f1     = 523.25f;  // C5
-    const float f2     = 659.26f;  // E5
-    const int   attack = (int)(0.002f * sr);  // 2ms
+    // SMB 1-Up: 6 ascending notes, NES-style square wave
+    static const float notes[] = {
+        523.25f,   // C5
+        659.25f,   // E5
+        783.99f,   // G5
+        1046.50f,  // C6
+        1318.51f,  // E6
+        1567.98f,  // G6
+    };
+    const int   note_len = samples / 6;   // samples per note
+    const int   ramp     = (int)(0.005f * 16000.0f);  // 5ms ramp to avoid clicks
     for (int i = 0; i < samples; i++) {
-        float t   = (float)i / sr;
-        float env = (i < attack)
-                    ? (float)i / attack
-                    : expf(-2.5f * (t - 0.002f));
-        // Layer both frequencies at equal amplitude
-        float wave = 0.5f * sinf(2.0f * M_PI * f1 * t)
-                   + 0.5f * sinf(2.0f * M_PI * f2 * t);
-        float val = wave * env * 28000.0f;
-        if (val >  32767.0f) val =  32767.0f;
-        if (val < -32768.0f) val = -32768.0f;
+        int   note  = i / note_len;
+        int   pos   = i % note_len;
+        float freq  = notes[note];
+        float t     = (float)i / 16000.0f;
+        float phase = fmodf(t * freq, 1.0f);
+        float wave  = (phase < 0.5f) ? 1.0f : -1.0f;
+        // Linear ramp at start/end of each note to avoid click
+        float env = 1.0f;
+        if (pos < ramp)                  env = (float)pos / ramp;
+        else if (pos >= note_len - ramp) env = (float)(note_len - 1 - pos) / ramp;
+        float val = wave * env * 24000.0f;
         int16_t s = (int16_t)val;
         buf[i * 2]     = s;
         buf[i * 2 + 1] = s;
@@ -97,7 +105,7 @@ static bool audioInit()
         return false;
     }
 
-    esp_codec_dev_set_out_vol(_playback, 100.0f);
+    esp_codec_dev_set_out_vol(_playback, 80.0f);
     esp_codec_dev_sample_info_t fs = {};
     fs.sample_rate     = 16000;
     fs.channel         = 2;
