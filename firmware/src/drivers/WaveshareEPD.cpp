@@ -162,6 +162,13 @@ void WaveshareEPD::dumpBuffer() {
             Serial.println();
             Serial.flush();
         }
+    // // Send raw binary in 64-byte chunks (USB full-speed packet size)
+    // const int CHUNK = 64;
+    // for (int i = 0; i < EPD_BUFFER_SIZE; i += CHUNK) {
+    //     int len = min(CHUNK, EPD_BUFFER_SIZE - i);
+    //     Serial.write(_buffer + i, len);
+    //     Serial.flush();
+    //     delay(10);
     }
     Serial.println("EPDDUMP_END");
     Serial.flush();

@@ -1,6 +1,7 @@
 #pragma once
 #include <WebServer.h>
 #include <DNSServer.h>
+#include <qrcode.h>
 #include "WaveshareEPD.h"
 #include "screen_menu.h"
 #include "touch.h"
@@ -8,6 +9,8 @@
 #include <Fonts/FreeSansBold9pt7b.h>
 
 #define PORTAL_SSID  "Widget-Setup"
+#define QR_MAX_VER   6    // version 6 handles up to 134 bytes (covers max SSID+password)
+#define QR_BUF_SIZE  215  // qrcode_getBufferSize(6) = 212; +3 margin
 
 // ── EPD screens ───────────────────────────────────────────────────────────
 
@@ -26,9 +29,10 @@ static void _drawWifiStatus(WaveshareEPD& epd) {
         epd.setCursor(10, 55); epd.print("Connected:");
         String ssid = WiFi.SSID();
         if (ssid.length() > 15) ssid = ssid.substring(0, 14) + "~";
-        epd.setCursor(10, 78); epd.print(ssid);
+        epd.setCursor(10, 78);  epd.print(ssid);
         epd.setCursor(10, 103); epd.print(WiFi.localIP().toString());
         epd.setCursor(10, 140); epd.print("Tap: add network");
+        epd.setCursor(10, 163); epd.print("Swipe up: share WiFi");
     } else if (list.empty()) {
         epd.setCursor(10, 65);  epd.print("No networks");
         epd.setCursor(10, 87);  epd.print("saved yet.");
@@ -45,6 +49,7 @@ static void _drawWifiStatus(WaveshareEPD& epd) {
             y += 20;
         }
         epd.setCursor(10, 163); epd.print("Tap: add network");
+        epd.setCursor(10, 180); epd.print("Swipe up: share WiFi");
     }
 
     epd.setCursor(10, 193); epd.print("Swipe down: back");
@@ -61,7 +66,73 @@ static void _drawWifiScanning(WaveshareEPD& epd) {
     epd.displayBase();
 }
 
-static void _drawWifiPortal(WaveshareEPD& epd) {
+static void _drawWifiSaved(WaveshareEPD& epd, const String& ssid) {
+    epd.clearBuffer();
+    epd.setFont(&FreeSansBold9pt7b);
+    epd.setTextColor(0);
+    epd.setCursor(10, 80);  epd.print("Saved!");
+    epd.setCursor(10, 108); epd.print(ssid);
+    epd.setCursor(10, 148); epd.print("Rebooting...");
+    epd.displayBase();
+}
+
+// ── QR code rendering ─────────────────────────────────────────────────────
+
+static void _drawWifiQR(WaveshareEPD& epd, const char* text,
+                        const char* title, const char* hint = nullptr) {
+    QRCode qr;
+    uint8_t buf[QR_BUF_SIZE];
+    bool ok = false;
+    for (uint8_t v = 2; v <= QR_MAX_VER; v++) {
+        if (qrcode_initText(&qr, buf, v, ECC_LOW, text) == 0) { ok = true; break; }
+    }
+
+    epd.clearBuffer();
+    epd.setFont(&FreeSansBold9pt7b);
+    epd.setTextColor(0);
+    epd.setCursor(10, 18); epd.print(title);
+    epd.drawLine(0, 25, 200, 25, 0);
+
+    if (!ok) {
+        epd.setFont(NULL); epd.setTextSize(1);
+        epd.setCursor(10, 50); epd.print("Credentials too long");
+        epd.setCursor(10, 62); epd.print("for QR code.");
+        if (hint) { epd.setCursor(5, 193); epd.print(hint); }
+        epd.displayBase();
+        return;
+    }
+
+    // Scale QR to fit between y=28 and y=185 (leaving room for hint)
+    int availPx = hint ? 158 : 172;
+    int scale   = availPx / qr.size;
+    if (scale < 2) scale = 2;
+    int qrPx = qr.size * scale;
+    int xOff = (200 - qrPx) / 2;
+    int yOff = 28 + (availPx - qrPx) / 2;
+
+    // White quiet zone (QR spec requires border of at least 4 modules)
+    epd.fillRect(xOff - scale, yOff - scale, qrPx + scale * 2, qrPx + scale * 2, 1);
+
+    for (int y = 0; y < qr.size; y++) {
+        for (int x = 0; x < qr.size; x++) {
+            if (qrcode_getModule(&qr, x, y))
+                epd.fillRect(xOff + x * scale, yOff + y * scale, scale, scale, 0);
+        }
+    }
+
+    if (hint) {
+        epd.setFont(NULL); epd.setTextSize(1);
+        epd.setCursor(5, 193); epd.print(hint);
+    }
+
+    epd.displayBase();
+}
+
+// ── Portal screen ─────────────────────────────────────────────────────────
+
+/*
+// Old text-based portal instructions — replaced by QR below
+static void _drawWifiPortal_text(WaveshareEPD& epd) {
     epd.clearBuffer();
     epd.setFont(&FreeSansBold9pt7b);
     epd.setTextColor(0);
@@ -78,15 +149,23 @@ static void _drawWifiPortal(WaveshareEPD& epd) {
     epd.setCursor(10, 180); epd.print("Tap: cancel");
     epd.displayBase();
 }
+*/
 
-static void _drawWifiSaved(WaveshareEPD& epd, const String& ssid) {
-    epd.clearBuffer();
-    epd.setFont(&FreeSansBold9pt7b);
-    epd.setTextColor(0);
-    epd.setCursor(10, 80);  epd.print("Saved!");
-    epd.setCursor(10, 108); epd.print(ssid);
-    epd.setCursor(10, 148); epd.print("Rebooting...");
-    epd.displayBase();
+static void _drawWifiPortal(WaveshareEPD& epd) {
+    _drawWifiQR(epd, "WIFI:T:nopass;S:" PORTAL_SSID ";;",
+                "Scan to join AP", "Then: 192.168.4.1  Tap:back");
+}
+
+// ── Share WiFi QR ─────────────────────────────────────────────────────────
+
+static void _drawShareWifiQR(WaveshareEPD& epd) {
+    String ssid = WiFi.SSID();
+    String pass;
+    auto creds = _wifiLoadCreds();
+    for (auto& c : creds) { if (c.ssid == ssid) { pass = c.pass; break; } }
+
+    String text = "WIFI:T:WPA;S:" + ssid + ";P:" + pass + ";;";
+    _drawWifiQR(epd, text.c_str(), "Share WiFi", "Any touch: back");
 }
 
 // ── Captive portal ────────────────────────────────────────────────────────
@@ -212,14 +291,30 @@ static void _startPortal(WaveshareEPD& epd) {
 // ── Public interface ──────────────────────────────────────────────────────
 
 void screen5Init(WaveshareEPD& epd) {
+    if (!wifiConnected()) wifiBegin();
     _drawWifiStatus(epd);
 }
 
 bool updateScreen5(WaveshareEPD& epd, TouchResult tr) {
+    static bool _showingShareQR = false;
+
+    if (_showingShareQR) {
+        if (tr.event != TOUCH_NONE) {
+            _showingShareQR = false;
+            _drawWifiStatus(epd);
+        }
+        return false;
+    }
+
     if (tr.event == SWIPE_DOWN) return true;
+    if (tr.event == SWIPE_UP && wifiConnected()) {
+        _showingShareQR = true;
+        _drawShareWifiQR(epd);
+        return false;
+    }
     if (tr.event == TOUCH_TAP) {
         _startPortal(epd);
-        _drawWifiStatus(epd);   // redraw status after cancel/reboot
+        _drawWifiStatus(epd);
     }
     return false;
 }

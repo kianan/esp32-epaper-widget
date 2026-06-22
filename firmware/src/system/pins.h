@@ -35,7 +35,7 @@
 // Power management
 #define BAT_ADC      4
 #define VBAT_PWR_EN  17  // HIGH = enable battery power to board
-#define AUDIO_PWR_EN 42  // LOW  = audio amp off (save power)
+#define AUDIO_PWR_EN 42  // LOW  = audio codec power ON (active-low enable)
 
 // Status LED
 #define LED_PIN      3
