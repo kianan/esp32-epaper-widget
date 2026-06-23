@@ -6,29 +6,22 @@
 #include <Fonts/FreeMonoBold18pt7b.h>
 #include <Fonts/FreeSans9pt7b.h>
 
+namespace screenClock {
+
 #define CLOCK_MENU_STRIP_Y 170
 
-bool updateClock(WaveshareEPD& epd, TouchResult tr) {
-    static unsigned long lastDraw = 0;
-    unsigned long now = millis();
+static unsigned long _lastDraw = 0;
 
-    if (tr.event == SWIPE_RIGHT) return true;
-
-    if (now - lastDraw < 10000 && lastDraw != 0) return false;
-    lastDraw = now;
-
+static void _draw(WaveshareEPD& epd)
+{
     epd.clearBuffer();
     epd.setTextColor(0);
 
-    // Time
     epd.setFont(&FreeMonoBold18pt7b);
     int h = 0, m = 0;
     char timeBuf[6];
-    if (rtcRead(h, m)) {
-        snprintf(timeBuf, sizeof(timeBuf), "%02d:%02d", h, m);
-    } else {
-        snprintf(timeBuf, sizeof(timeBuf), "--:--");
-    }
+    if (rtcRead(h, m)) snprintf(timeBuf, sizeof(timeBuf), "%02d:%02d", h, m);
+    else                snprintf(timeBuf, sizeof(timeBuf), "--:--");
     {
         int16_t x1, y1; uint16_t tw, th;
         epd.getTextBounds(timeBuf, 0, 0, &x1, &y1, &tw, &th);
@@ -37,7 +30,6 @@ bool updateClock(WaveshareEPD& epd, TouchResult tr) {
     epd.print(timeBuf);
 
     epd.setFont(&FreeSans9pt7b);
-
     auto printCentered = [&](const char* s, int y) {
         int16_t x1, y1; uint16_t tw, th;
         epd.getTextBounds(s, 0, 0, &x1, &y1, &tw, &th);
@@ -49,17 +41,11 @@ bool updateClock(WaveshareEPD& epd, TouchResult tr) {
     shtc3Read(tempC, humidity);
 
     char tempBuf[24];
-    if (tempC > -900)
-        snprintf(tempBuf, sizeof(tempBuf), "%.1f C", tempC);
-    else
-        snprintf(tempBuf, sizeof(tempBuf), "Temp: err");
+    snprintf(tempBuf, sizeof(tempBuf), tempC > -900 ? "%.1f C" : "Temp: err", tempC);
     printCentered(tempBuf, 112);
 
     char humBuf[24];
-    if (humidity > -900)
-        snprintf(humBuf, sizeof(humBuf), "%.0f%% RH", humidity);
-    else
-        snprintf(humBuf, sizeof(humBuf), "Hum: err");
+    snprintf(humBuf, sizeof(humBuf), humidity > -900 ? "%.0f%% RH" : "Hum: err", humidity);
     printCentered(humBuf, 133);
 
     char battBuf[16];
@@ -71,5 +57,24 @@ bool updateClock(WaveshareEPD& epd, TouchResult tr) {
     epd.setCursor(5, 194); epd.print("Swipe right: back");
 
     epd.display();
+}
+
+void screenInit(WaveshareEPD& epd)
+{
+    _lastDraw = 0;
+    _draw(epd);
+}
+
+bool screenUpdate(WaveshareEPD& epd, TouchResult tr)
+{
+    if (tr.event == SWIPE_RIGHT) return true;
+
+    unsigned long now = millis();
+    if (now - _lastDraw >= 10000) {
+        _lastDraw = now;
+        _draw(epd);
+    }
     return false;
 }
+
+} // namespace screenClock

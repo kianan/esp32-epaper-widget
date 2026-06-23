@@ -2,9 +2,11 @@
 #include <Wire.h>
 #include <LittleFS.h>
 #include "driver/gpio.h"
+#include "esp_system.h"
 
 #include "pins.h"
 #include "touch.h"
+#include "saved_state.h"
 #include "screen_menu.h"
 #include "screen_clock.h"
 #include "screen_pomodoro.h"
@@ -19,7 +21,31 @@
 
 WaveshareEPD epd(EPD_CS, EPD_DC, EPD_RST, EPD_BUSY, EPD_SCLK, EPD_SDI);
 
+struct ScreenDef {
+    void (*init)(WaveshareEPD&);
+    bool (*update)(WaveshareEPD&, TouchResult);
+};
+
+// Order must match the Screen enum in menu_logic.h
+static const ScreenDef screenRegistry[] = {
+    { nullptr,                   nullptr                    },  // SCREEN_MENU
+    { screenClock::screenInit,   screenClock::screenUpdate  },  // SCREEN_CLOCK
+    { pomodoro::screenInit,      pomodoro::screenUpdate     },  // SCREEN_POMODORO
+    { photos::screenInit,        photos::screenUpdate       },  // SCREEN_PHOTOS
+    { jessie::screenInit,        jessie::screenUpdate       },  // SCREEN_JESSIE
+    { wifi::screenInit,          wifi::screenUpdate         },  // SCREEN_5
+    { api::screenInit,           api::screenUpdate          },  // SCREEN_6
+    { audioScreen::screenInit,   audioScreen::screenUpdate  },  // SCREEN_7
+    { screen8::screenInit,       screen8::screenUpdate      },  // SCREEN_8
+};
+
 Screen currentScreen = SCREEN_MENU;
+
+void _saveAndSleep(uint64_t timerWakeupUs = 0) {
+    _savedState.screen     = currentScreen;
+    _savedState.photoIndex = photos::getIndex();
+    enterDeepSleep(timerWakeupUs);
+}
 
 void setup() {
     Serial.begin(115200);
@@ -51,7 +77,13 @@ void setup() {
     delay(200);
     touchInit();
 
-    drawMenu(epd);
+    bool wakeFromSleep = (esp_reset_reason() == ESP_RST_DEEPSLEEP);
+    if (wakeFromSleep && _savedState.screen != SCREEN_MENU) {
+        currentScreen = _savedState.screen;
+        screenRegistry[currentScreen].init(epd);
+    } else {
+        drawMenu(epd);
+    }
 
     activityPing();
 }
@@ -108,71 +140,25 @@ void loop() {
 
 #ifdef DEBUG
     switch (tr.event) {
-        case TOUCH_TAP:    Serial.printf("TAP (%d,%d)\n", tr.x, tr.y); break;
-        case SWIPE_LEFT:   Serial.println("SWIPE_LEFT");  break;
-        case SWIPE_RIGHT:  Serial.println("SWIPE_RIGHT"); break;
-        case SWIPE_UP:     Serial.println("SWIPE_UP");    break;
-        case SWIPE_DOWN:   Serial.println("SWIPE_DOWN");  break;
+        case TOUCH_TAP:   Serial.printf("TAP (%d,%d)\n", tr.x, tr.y); break;
+        case SWIPE_LEFT:  Serial.println("SWIPE_LEFT");  break;
+        case SWIPE_RIGHT: Serial.println("SWIPE_RIGHT"); break;
+        case SWIPE_UP:    Serial.println("SWIPE_UP");    break;
+        case SWIPE_DOWN:  Serial.println("SWIPE_DOWN");  break;
         default: break;
     }
 #endif
 
-    switch (currentScreen) {
-        case SCREEN_MENU: {
-            Screen next = menuHandleTouch(tr, epd);
-            if (next != SCREEN_MENU) {
-                currentScreen = next;
-                if (currentScreen == SCREEN_CLOCK)    updateClock(epd, {TOUCH_NONE});
-                if (currentScreen == SCREEN_POMODORO) pomoInit(epd);
-                if (currentScreen == SCREEN_PHOTOS)   photosInit(epd);
-                if (currentScreen == SCREEN_JESSIE)   drawJessie(epd);
-                if (currentScreen == SCREEN_5)        screen5Init(epd);
-                if (currentScreen == SCREEN_6)        screen6Init(epd);
-                if (currentScreen == SCREEN_7)        screen7Init(epd);
-                if (currentScreen == SCREEN_8)        screen8Init(epd);
-            }
-            break;
+    if (currentScreen == SCREEN_MENU) {
+        Screen next = menuHandleTouch(tr, epd);
+        if (next != SCREEN_MENU) {
+            currentScreen = next;
+            screenRegistry[currentScreen].init(epd);
         }
-
-        case SCREEN_CLOCK:
-            if (updateClock(epd, tr)) {
-                currentScreen = SCREEN_MENU;
-                drawMenu(epd);
-            }
-            break;
-
-        case SCREEN_POMODORO:
-            if (updatePomodoro(epd, tr)) {
-                currentScreen = SCREEN_MENU;
-                drawMenu(epd);
-            }
-            break;
-
-        case SCREEN_PHOTOS:
-            if (updatePhotos(epd, tr)) {
-                currentScreen = SCREEN_MENU;
-                drawMenu(epd);
-            }
-            break;
-
-        case SCREEN_JESSIE:
-            if (updateJessie(epd, tr)) {
-                currentScreen = SCREEN_MENU;
-                drawMenu(epd);
-            }
-            break;
-
-        case SCREEN_5:
-            if (updateScreen5(epd, tr)) { currentScreen = SCREEN_MENU; drawMenu(epd); }
-            break;
-        case SCREEN_6:
-            if (updateScreen6(epd, tr)) { currentScreen = SCREEN_MENU; drawMenu(epd); }
-            break;
-        case SCREEN_7:
-            if (updateScreen7(epd, tr)) { currentScreen = SCREEN_MENU; drawMenu(epd); }
-            break;
-        case SCREEN_8:
-            if (updateScreen8(epd, tr)) { currentScreen = SCREEN_MENU; drawMenu(epd); }
-            break;
+    } else {
+        if (screenRegistry[currentScreen].update(epd, tr)) {
+            currentScreen = SCREEN_MENU;
+            drawMenu(epd);
+        }
     }
 }
