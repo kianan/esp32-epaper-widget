@@ -16,6 +16,10 @@
 #include "screen_api.h"
 #include "screen_audio.h"
 #include "screen_8.h"
+#include "screen_9.h"
+#include "screen_10.h"
+#include "screen_11.h"
+#include "screen_12.h"
 #include "rtc.h"
 #include "sleep.h"
 
@@ -37,6 +41,10 @@ static const ScreenDef screenRegistry[] = {
     { api::screenInit,           api::screenUpdate          },  // SCREEN_6
     { audioScreen::screenInit,   audioScreen::screenUpdate  },  // SCREEN_7
     { screen8::screenInit,       screen8::screenUpdate      },  // SCREEN_8
+    { screen9::screenInit,       screen9::screenUpdate      },  // SCREEN_9
+    { screen10::screenInit,      screen10::screenUpdate     },  // SCREEN_10
+    { screen11::screenInit,      screen11::screenUpdate     },  // SCREEN_11
+    { screen12::screenInit,      screen12::screenUpdate     },  // SCREEN_12
 };
 
 Screen currentScreen = SCREEN_MENU;
