@@ -11,3 +11,4 @@ firmware/data/
 product/
 *.pyc
 __pycache__/
+firmware/src/system/secrets.h
