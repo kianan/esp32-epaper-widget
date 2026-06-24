@@ -53,7 +53,7 @@ static void _drawMenuPage(WaveshareEPD& epd) {
         const char* bl[] = { "Audio" }; drawBlock(epd, bl, 1, 0,          GRID_MID_Y, GRID_MID_X, 190 - GRID_MID_Y);
         const char* br[] = { "SD" };    drawBlock(epd, br, 1, GRID_MID_X, GRID_MID_Y, GRID_MID_X, 190 - GRID_MID_Y);
     } else {
-        const char* tl[] = { "---" }; drawBlock(epd, tl, 1, 0,          0,          GRID_MID_X, GRID_MID_Y);
+        const char* tl[] = { "Voice" }; drawBlock(epd, tl, 1, 0,          0,          GRID_MID_X, GRID_MID_Y);
         const char* tr[] = { "---" }; drawBlock(epd, tr, 1, GRID_MID_X, 0,          GRID_MID_X, GRID_MID_Y);
         const char* bl[] = { "---" }; drawBlock(epd, bl, 1, 0,          GRID_MID_Y, GRID_MID_X, 190 - GRID_MID_Y);
         const char* br[] = { "---" }; drawBlock(epd, br, 1, GRID_MID_X, GRID_MID_Y, GRID_MID_X, 190 - GRID_MID_Y);

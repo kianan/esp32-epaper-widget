@@ -11,8 +11,10 @@ static volatile bool _touchIntFired = false;
 
 void IRAM_ATTR _touchISR() { _touchIntFired = true; }
 
-bool touchActive() { return _tsState == TS_PRESSING; }
+bool touchActive()  { return _tsState == TS_PRESSING; }
 static int   _tsStartX, _tsStartY;
+static int touchStartX() { return _tsStartX; }
+static int touchStartY() { return _tsStartY; }
 static int   _tsPeakDx, _tsPeakDy;   // max displacement seen during press
 static unsigned long _tsCooldown = 0;
 

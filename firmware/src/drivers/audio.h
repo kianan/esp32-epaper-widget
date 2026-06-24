@@ -175,6 +175,18 @@ static void audioRecord()
 #endif
 }
 
+static int audioReadChunk(void* buf, int bytes)
+{
+    if (!_audioInited || !_capture) return -1;
+    return esp_codec_dev_read(_capture, buf, bytes);
+}
+
+static int audioWriteChunk(void* buf, int bytes)
+{
+    if (!_audioInited || !_playback) return -1;
+    return esp_codec_dev_write(_playback, buf, bytes);
+}
+
 static void audioPlayRecording()
 {
     if (!_audioInited || !_playback || !_hasRec || !_recbuf) return;
